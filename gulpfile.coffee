@@ -6,6 +6,7 @@ uglify = require('gulp-uglify')
 header = require('gulp-header')
 rename = require('gulp-rename')
 bower = require('gulp-bower')
+wrap = require('gulp-wrap-umd')
 
 pkg = require('./package.json')
 banner = "/*! #{ pkg.name } #{ pkg.version } */\n"
@@ -22,21 +23,46 @@ gulp.task 'coffee', ->
     .pipe(coffee())
     .pipe(gulp.dest('./docs/welcome/js/'))
 
-gulp.task 'concat', ->
+gulp.task 'concat', ['coffee'], ->
   gulp.src(['./bower_components/tether/tether.js', './bower_components/drop/js/drop.js', './js/tooltip.js'])
     .pipe(concat('tooltip.js'))
     .pipe(header(banner))
     .pipe(gulp.dest('./'))
 
-gulp.task 'uglify', ->
+  gulp.src(['./js/tooltip.js'])
+    .pipe(concat('tooltip-amd.js'))
+    .pipe(wrap({
+      namespace: 'Tooltip'
+      exports:   'Tooltip'
+      deps: [
+        {
+          name:       'drop'
+          globalName: 'Drop'
+          paramName:  'Drop'
+        }, {
+          name:       'tether'
+          globalName: 'Tether'
+          paramName:  'Tether'
+        }
+      ]
+    }))
+    .pipe(header(banner))
+    .pipe(gulp.dest('./'))
+
+gulp.task 'uglify', ['concat'], ->
   gulp.src('./tooltip.js')
     .pipe(uglify())
     .pipe(header(banner))
     .pipe(rename('tooltip.min.js'))
     .pipe(gulp.dest('./'))
 
-gulp.task 'js', ->
-  gulp.run 'coffee', 'concat', 'uglify'
+  gulp.src('./tooltip-amd.js')
+    .pipe(uglify())
+    .pipe(header(banner))
+    .pipe(rename('tooltip-amd.min.js'))
+    .pipe(gulp.dest('./'))
+
+gulp.task 'js', ['uglify']
 
 gulp.task 'compass', ->
   for path in ['', 'docs/welcome/']
